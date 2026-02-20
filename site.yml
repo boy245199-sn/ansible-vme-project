@@ -1,0 +1,15 @@
+- hosts: db_servers
+  roles:
+    - role-db
+
+- hosts: web_servers
+  roles:
+    - role-web
+
+- hosts: files_servers
+  roles:
+    - role-files
+
+- hosts: monitoring_servers
+  roles:
+    - role-monitor
