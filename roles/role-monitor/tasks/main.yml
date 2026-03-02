@@ -1,0 +1,67 @@
+---
+# 1. Mettre à jour les dépôts (obligatoire avant installation)
+- name: Mettre à jour les dépôts
+  apt:
+    update_cache: yes
+  become: yes
+
+# 2. Installer Nagios et les plugins (noms corrects)
+- name: Installer Nagios Core et plugins
+  apt:
+    name:
+      - nagios4-core
+      - nagios4-common
+      - nagios4-cgi
+      - monitoring-plugins
+      - nagios-nrpe-server
+    state: present
+  become: yes
+
+# 3. Démarrer Nagios et l'activer au démarrage
+- name: Démarrer Nagios
+  service:
+    name: nagios4
+    state: started
+    enabled: yes
+  become: yes
+
+# 4. Créer le dossier pour la configuration des hôtes
+- name: Créer le dossier conf.d
+  file:
+    path: /etc/nagios4/conf.d
+    state: directory
+    mode: '0755'
+  become: yes
+
+# 5. Configurer la surveillance du serveur DB
+- name: Configurer la surveillance DB
+  template:
+    src: db.cfg.j2
+    dest: /etc/nagios4/conf.d/db.cfg
+  become: yes
+  notify: redemarrer nagios
+
+# 6. Configurer la surveillance du serveur WEB
+- name: Configurer la surveillance WEB
+  template:
+    src: web.cfg.j2
+    dest: /etc/nagios4/conf.d/web.cfg
+  become: yes
+  notify: redemarrer nagios
+
+# 7. Configurer la surveillance du serveur FILES
+- name: Configurer la surveillance FILES
+  template:
+    src: files.cfg.j2
+    dest: /etc/nagios4/conf.d/files.cfg
+  become: yes
+  notify: redemarrer nagios
+
+# 8. Définir le mot de passe admin pour Nagios
+- name: Configurer le mot de passe admin
+  htpasswd:
+    path: /etc/nagios4/htpasswd.users
+    name: nagiosadmin
+    password: "nagios"
+    state: present
+  become: yes

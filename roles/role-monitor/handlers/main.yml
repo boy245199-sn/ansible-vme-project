@@ -1,0 +1,7 @@
+---
+- name: redemarrer nagios
+  service:
+    name: nagios4
+    state: restarted
+  become: yes
+

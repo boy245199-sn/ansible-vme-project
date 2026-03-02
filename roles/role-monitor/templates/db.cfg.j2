@@ -1,0 +1,20 @@
+define host {
+    use                     linux-server
+    host_name               db-server
+    alias                   Base de données
+    address                 192.168.33.11
+}
+
+define service {
+    use                     generic-service
+    host_name               db-server
+    service_description     Ping
+    check_command           check_ping!100.0,20%!500.0,60%
+}
+
+define service {
+    use                     generic-service
+    host_name               db-server
+    service_description     MySQL
+    check_command           check_tcp!3306
+}

@@ -1,0 +1,20 @@
+define host {
+    use                     linux-server
+    host_name               files-server
+    alias                   Serveur de fichiers
+    address                 192.168.33.13
+}
+
+define service {
+    use                     generic-service
+    host_name               files-server
+    service_description     Ping
+    check_command           check_ping!100.0,20%!500.0,60%
+}
+
+define service {
+    use                     generic-service
+    host_name               files-server
+    service_description     NFS
+    check_command           check_tcp!2049
+}
