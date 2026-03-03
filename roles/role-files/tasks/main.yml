@@ -1,0 +1,54 @@
+---
+# 1. Installer NFS
+- name: Installer NFS server
+  apt:
+    name: nfs-kernel-server
+    state: present
+  become: yes
+
+# 2. Créer le dossier partagé principal
+- name: Créer le répertoire /srv/share
+  file:
+    path: /srv/share
+    state: directory
+    owner: nobody
+    group: nogroup
+    mode: '0777'
+  become: yes
+
+# 3. Créer sous-dossier uploads (pour les fichiers du web)
+- name: Créer /srv/share/uploads
+  file:
+    path: /srv/share/uploads
+    state: directory
+    owner: nobody
+    group: nogroup
+    mode: '0777'
+  become: yes
+
+# 4. Créer sous-dossier backups (pour les sauvegardes DB)
+- name: Créer /srv/share/backups
+  file:
+    path: /srv/share/backups
+    state: directory
+    owner: nobody
+    group: nogroup
+    mode: '0777'
+  become: yes
+
+# 5. Configurer les exports NFS
+- name: Ajouter la configuration dans /etc/exports
+  lineinfile:
+    path: /etc/exports
+    line: "/srv/share 192.168.33.0/24(rw,sync,no_subtree_check)"
+    create: yes
+  become: yes
+  notify: redemarrer nfs
+
+# 6. Démarrer NFS
+- name: Démarrer NFS
+  service:
+    name: nfs-kernel-server
+    state: started
+    enabled: yes
+  become: yes

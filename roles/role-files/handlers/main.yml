@@ -1,0 +1,6 @@
+---
+- name: redemarrer nfs
+  service:
+    name: nfs-kernel-server
+    state: restarted
+  become: yes
