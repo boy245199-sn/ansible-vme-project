@@ -1,0 +1,77 @@
+---
+# 0. Installer le driver Python pour MySQL (obligatoire)
+- name: Installer python3-pymysql (driver MySQL pour Ansible)
+  apt:
+    name: python3-pymysql
+    state: present
+  become: yes
+
+# 1. Mettre à jour les dépôts
+- name: Mettre à jour les dépôts
+  apt:
+    update_cache: yes
+  become: yes
+
+# 2. Installer MySQL
+- name: Installer MySQL server
+  apt:
+    name: mysql-server
+    state: present
+  become: yes
+
+# 3. Démarrer MySQL et l'activer au démarrage
+- name: Démarrer MySQL
+  service:
+    name: mysql
+    state: started
+    enabled: yes
+  become: yes
+
+# 4. Changer le mot de passe root (corrigé avec check_implicit_admin)
+- name: Changer le mot de passe root de MySQL
+  mysql_user:
+    name: root
+    password: "rootpassword"
+    host: "{{ item }}"
+    login_user: root
+    login_password: ""
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    check_implicit_admin: yes
+  loop:
+    - localhost
+    - 127.0.0.1
+    - ::1
+  become: yes
+  ignore_errors: yes
+
+# 5. Créer la base de données pour l'application
+- name: Créer la base de données 'app_db'
+  mysql_db:
+    name: app_db
+    state: present
+    login_user: root
+    login_password: "rootpassword"
+  become: yes
+
+# 6. Créer l'utilisateur pour le serveur web
+- name: Créer l'utilisateur 'webuser'
+  mysql_user:
+    name: webuser
+    password: "webpassword"
+    host: 192.168.33.12
+    priv: "app_db.*:ALL"
+    state: present
+    login_user: root
+    login_password: "rootpassword"
+  become: yes
+
+# 7. Ouvrir le port MySQL dans le firewall
+- name: Autoriser MySQL dans le firewall
+  ufw:
+    rule: allow
+    port: '3306'
+    proto: tcp
+    src: 192.168.33.12
+  become: yes
+  ignore_errors: yes
+
