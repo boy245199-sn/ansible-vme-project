@@ -1,0 +1,165 @@
+# 1. Mettre à jour les dépôts
+- name: Mettre à jour les dépôts
+  apt:
+    update_cache: yes
+  become: yes
+
+# 2. Installer Apache
+- name: Installer Apache2
+  apt:
+    name: apache2
+    state: present
+  become: yes
+
+# 3. Installer PHP et les extensions nécessaires
+- name: Installer PHP et extensions
+  apt:
+    name:
+      - php
+      - php-mysql
+      - libapache2-mod-php
+      - php-mbstring
+      - php-xml
+      - php-curl
+      - nfs-common  # Pour monter le partage NFS
+    state: present
+  become: yes
+
+# 4. Démarrer Apache
+- name: Démarrer Apache
+  service:
+    name: apache2
+    state: started
+    enabled: yes
+  become: yes
+
+# 5. Créer un dossier pour monter le partage NFS
+- name: Créer /mnt/uploads
+  file:
+    path: /mnt/uploads
+    state: directory
+    mode: '0755'
+  become: yes
+
+# 6. Monter le partage NFS du serveur files
+- name: Monter le partage NFS
+  mount:
+    path: /mnt/uploads
+    src: 192.168.33.13:/srv/share/uploads
+    fstype: nfs
+    opts: defaults
+    state: mounted
+  become: yes
+  ignore_errors: yes  # Ignorer si le serveur files n'est pas prêt
+
+# 7. Créer une page de test pour la base de données
+- name: Créer une page de test DB
+  copy:
+    content: |
+      <?php
+      echo "<h1>🧪 Test connexion Base de données</h1>";
+      
+      // Paramètres de connexion
+      $host = '192.168.33.11';
+      $user = 'webuser';
+      $password = 'webpassword';
+      $database = 'app_db';
+      
+      echo "<p>Tentative de connexion à MySQL sur $host...</p>";
+      
+      // Tentative de connexion
+      $connection = mysqli_connect($host, $user, $password, $database);
+      
+      if ($connection) {
+          echo "<p style='color:green; font-weight:bold'>✅ Connexion à la base de données RÉUSSIE !</p>";
+          echo "<p>Version MySQL : " . mysqli_get_server_info($connection) . "</p>";
+          
+          // Vérifier que la base existe
+          $result = mysqli_query($connection, "SHOW TABLES");
+          echo "<p>Tables dans app_db : " . mysqli_num_rows($result) . "</p>";
+          
+          mysqli_close($connection);
+      } else {
+          echo "<p style='color:red; font-weight:bold'>❌ Échec de connexion à la base de données</p>";
+          echo "<p>Erreur : " . mysqli_connect_error() . "</p>";
+      }
+      ?>
+    dest: /var/www/html/dbtest.php
+  become: yes
+
+# 8. Créer une page de test pour le partage NFS
+- name: Créer une page de test NFS
+  copy:
+    content: |
+      <?php
+      echo "<h1>🧪 Test partage NFS</h1>";
+      
+      $upload_dir = '/mnt/uploads';
+      
+      echo "<p>Vérification du dossier $upload_dir...</p>";
+      
+      if (is_dir($upload_dir)) {
+          echo "<p style='color:green'>✅ Le dossier $upload_dir existe</p>";
+          
+          if (is_writable($upload_dir)) {
+              echo "<p style='color:green'>✅ Le dossier est accessible en écriture</p>";
+              
+              // Créer un fichier de test
+              $test_file = $upload_dir . '/test_' . date('Y-m-d_H-i-s') . '.txt';
+              $content = "Test d'écriture depuis le serveur web le " . date('Y-m-d H:i:s');
+              
+              if (file_put_contents($test_file, $content)) {
+                  echo "<p style='color:green'>✅ Fichier de test créé : " . basename($test_file) . "</p>";
+                  
+                  // Lister les fichiers
+                  $files = scandir($upload_dir);
+                  echo "<p>Fichiers présents :</p><ul>";
+                  foreach ($files as $file) {
+                      if ($file != '.' && $file != '..') {
+                          echo "<li>$file</li>";
+                      }
+                  }
+                  echo "</ul>";
+              } else {
+                  echo "<p style='color:red'>❌ Impossible de créer un fichier de test</p>";
+              }
+          } else {
+              echo "<p style='color:red'>❌ Le dossier n'est pas accessible en écriture</p>";
+          }
+      } else {
+          echo "<p style='color:red'>❌ Le dossier $upload_dir n'existe pas</p>";
+      }
+      ?>
+    dest: /var/www/html/nfstest.php
+  become: yes
+
+# 9. Créer une page d'accueil simple
+- name: Créer une page d'accueil
+  copy:
+    content: |
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <title>Serveur Web - Projet Ansible</title>
+          <style>
+              body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+              h1 { color: #333; }
+              .success { color: green; }
+              .info { background: #f0f0f0; padding: 10px; border-radius: 5px; }
+          </style>
+      </head>
+      <body>
+          <h1>🌐 Serveur Web - Projet Ansible</h1>
+          <p class="info">Ce serveur a été configuré automatiquement par Ansible.</p>
+          
+          <h2>Pages de test disponibles :</h2>
+          <ul>
+              <li><a href="/dbtest.php">Test connexion base de données</a></li>
+              <li><a href="/nfstest.php">Test partage NFS</a></li>
+          </ul>
+          
+          <p class="success">✅ Serveur web opérationnel !</p>
+      </body>
+      </html>
+    dest: /var/www/html/index.html
+  become: yes
